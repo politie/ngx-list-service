@@ -8,7 +8,7 @@ export class ListService<T> {
   list$!: Observable<ListResult<T>>;
 
   private filterFunction$: BehaviorSubject<((item: T) => boolean) | null> = new BehaviorSubject<((item: T) => boolean) | null>(null);
-  private sortOptions$: BehaviorSubject<ListSorting<T>> = new BehaviorSubject<ListSorting<T>>({ key: null, order: 'asc' });
+  private sortOptions$: BehaviorSubject<ListSorting<T> | null> = new BehaviorSubject<ListSorting<T> | null>(null);
   private currentIndex$ = new BehaviorSubject<number>(0);
 
   private originalList$: Subject<T[]> = new Subject<T[]>();
@@ -17,6 +17,7 @@ export class ListService<T> {
 
   private config: Required<ListPayload<any>> = {
     data: [],
+    sort: { key: null, order: 'asc' },
     filterFunction: null,
     sortFunction: null,
     pageSize: 0,
@@ -49,6 +50,10 @@ export class ListService<T> {
 
     if (isObservable(this.config.data)) {
       this.config.data.subscribe(r => this.update(r));
+    if (this.config.sort) {
+      this.sortOptions$.next(this.config.sort);
+    }
+
     } else {
       this.update(this.config.data);
     }
@@ -84,8 +89,8 @@ export class ListService<T> {
   sort(key: Extract<keyof T, string>) {
     let order: 'asc' | 'desc';
 
-    if (key === this.sortOptions$.getValue().key) {
-      order = this.sortOptions$.getValue().order === 'asc' ? 'desc' : 'asc';
+    if (key === this.sortOptions$.getValue()?.key) {
+      order = this.sortOptions$.getValue()?.order === 'asc' ? 'desc' : 'asc';
     } else {
       order = 'asc';
     }
@@ -120,7 +125,7 @@ export class ListService<T> {
   createSortedList$() {
     this.sortedList$ = combineLatest([
       this.filteredList$,
-      this.sortOptions$
+      this.sortOptions$.pipe(filter((i) => i !== null)) as Observable<ListSorting<T>>
     ]).pipe(
       map(([filteredList, sorting]) => {
         let list: T[];

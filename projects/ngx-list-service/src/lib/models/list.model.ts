@@ -87,6 +87,11 @@ export type ListPayload<T> = {
   pageSize?: number;
 
   /**
+   * Initial sorting
+   */
+  sort?: ListSorting<T>;
+
+  /**
    * Should the pagination return to page 1 on update?
    *
    * @deprecated
