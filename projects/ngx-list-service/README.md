@@ -32,7 +32,7 @@ export class MyComponent implements OnInit {
   
   ngOnInit() {
     this.listService.create({
-      data: myData,
+      list: myData,
       pageSize: 25
     });
   }
@@ -50,15 +50,15 @@ The create method takes your list configuration and data and returns the sorted 
 ##### Properties for the payload object
 | Property | Type | Description | Default |
 | --- | :--- | --- | --- |
-| data | `T[]` or `Observable<T[]>` | Array (or observable with array) of objects containing the data that should be displayed. | `[]` |
+| list | `T[]` or `Observable<T[]>` | Array (or observable with array) of objects containing the data that should be displayed. | `[]` |
 | pageSize | `number` | How many items should be returned per page? Set to `0` for no pages. | `0` |
+| sort | `{key: property: Extract<keyof T, string>, order: 'asc' / 'desc' `} | If you want to sort the list on initialzation, set the sort property to the key you want to sort the list to. | `{ key: null, order: 'asc' }` |
 | filterFunction | `(item: T) => boolean` | Define a custom filter function. See [Filtering the List](#filtering-the-list) for a example. | `null` |
 | sortFunction | `(item: T, property: Extract<keyof T, string>) => any)` | If you want to override the default sorting behaviour, you can do so by adding your own sortFunction. See [Sorting the List](#sorting-the-list) for a example. | `null` |
 
-
 ### `update(payload: T[])`
 
-Update the data list with a new set. This will return a slice of the new data, based on the filtering and sorting options already set.
+Update the data list with a new set. This will return a chunk of the new data, based on the filtering and sorting options already set.
 
 ### `sort(key: Extract<keyof T, string>)`
 
@@ -74,11 +74,11 @@ Filter the list by the given function. If you don't provide a function, the func
 
 ### `nextPage()`
 
-If pagination is active, grab the next `slice` of data and emit the result to the `result$` observable.
+If pagination is active, grab the next `chunk` of data and emit the result to the `result$` observable.
 
 ### `prevPage()`
 
-If pagination is active, grab the previous `slice` of data and emit the result to the `result$` observable.
+If pagination is active, grab the previous `chunk` of data and emit the result to the `result$` observable.
 
 ### `goToPage(page: number)`
 
@@ -90,11 +90,11 @@ If pagination is active, go to the provided page and emit the new result to the 
 
 ### `result$`
 
-The list$ observable will emit a new result whenever the ListService `update()`, `sort()` or `filter()` methods are called. The `result$` observable contains the current slice of items, the active sorting options and properties to create pagination. The object that is returned looks like this:
+The result$ observable will emit a new result whenever the ListService `update()`, `sort()` or `filter()` methods are called. The `result$` observable contains the current chunk of items, the active sorting options and properties to create pagination. The object that is returned from this observable looks like this:
 
 ```typescript
 {
-  list: `T[]`, // The current list slice (based on pagination and pageSize) of the filtered and sorted list
+  page: `T[]`, // The current page chunk (based on pagination and pageSize) of the filtered and sorted list
   sorting: {
     key: `Extract<keyof T, string>`,
     order: 'asc|desc'
@@ -108,8 +108,8 @@ The list$ observable will emit a new result whenever the ListService `update()`,
     },
     pages: `number[]` // Array of page numbers (1-based) to create pages in the view
     disabled: {
-      prev: `boolean`, // Should a prev button be disabled (current slice is start of list)
-      next: `boolean` // Should a next button be disabled (current slice is end of list)
+      prev: `boolean`, // Should a prev button be disabled (current chunk is start of list)
+      next: `boolean` // Should a next button be disabled (current chunk is end of list)
     }
   }
 }
@@ -136,7 +136,7 @@ import { OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
 
 
-const myData: User[] = [
+const myList: User[] = [
   {
     id: 1,
     name: 'User',
@@ -150,7 +150,7 @@ export class MyComponent implements OnInit {
 
   ngOnInit() {
     this.listService.create({
-      data: myData,
+      list: myList,
       pageSize: 25,
       filterFunction: (item: User): boolean => {
         
@@ -182,7 +182,7 @@ export class MyComponent implements OnInit {
 
   ngOnInit() {
     this.listService.create({
-      data: myData,
+      list: myList,
       pageSize: 25,
       sortFunction: (item: User, key: string): any => {
         
@@ -191,7 +191,7 @@ export class MyComponent implements OnInit {
           return new Date(item.lastActive);
         }
         
-        // By default, just return the value of the key to sort
+        // By default, just return the value of the key to the sorting function inside the Service.
         return item[key];
       }
     });
