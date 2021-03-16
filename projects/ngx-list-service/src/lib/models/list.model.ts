@@ -62,7 +62,7 @@ export type ListResult<T> = {
   /**
    * The current slice of the list
    */
-  list: T[];
+  page: T[];
 
   /**
    * The current sorting options
@@ -79,7 +79,7 @@ export type ListPayload<T> = {
   /**
    * The data that should be handled by the ListService
    */
-  data: T[] | Observable<T[]>;
+  list: T[] | Observable<T[]>;
 
   /**
    * Set to number of items per page / slice
