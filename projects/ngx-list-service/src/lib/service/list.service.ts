@@ -1,11 +1,11 @@
 import { BehaviorSubject, combineLatest, isObservable, Observable, Subject } from 'rxjs';
-import { map, skip, withLatestFrom } from 'rxjs/operators';
+import { filter, map, skip, withLatestFrom } from 'rxjs/operators';
 import { Injectable } from '@angular/core';
 import { ListPayload, ListResult, ListSorting } from '../models/list.model';
 
 @Injectable()
 export class ListService<T> {
-  list$!: Observable<ListResult<T>>;
+  result$!: Observable<ListResult<T>>;
 
   private filterFunction$: BehaviorSubject<((item: T) => boolean) | null> = new BehaviorSubject<((item: T) => boolean) | null>(null);
   private sortOptions$: BehaviorSubject<ListSorting<T> | null> = new BehaviorSubject<ListSorting<T> | null>(null);
@@ -16,8 +16,8 @@ export class ListService<T> {
   private sortedList$!: Observable<{ list: T[], sorting: ListSorting<T>}>;
 
   private config: Required<ListPayload<any>> = {
-    data: [],
     sort: { key: null, order: 'asc' },
+    list: [],
     filterFunction: null,
     sortFunction: null,
     pageSize: 0,
@@ -48,14 +48,14 @@ export class ListService<T> {
       this.filterFunction$.next(this.config.filterFunction);
     }
 
-    if (isObservable(this.config.data)) {
-      this.config.data.subscribe(r => this.update(r));
     if (this.config.sort) {
       this.sortOptions$.next(this.config.sort);
     }
 
+    if (isObservable(this.config.list)) {
+      this.config.list.subscribe(r => this.update(r));
     } else {
-      this.update(this.config.data);
+      this.update(this.config.list);
     }
   }
 
@@ -95,6 +95,7 @@ export class ListService<T> {
       order = 'asc';
     }
 
+
     this.sortOptions$.next({ order, key });
     this.currentIndex$.next(0);
   }
@@ -109,6 +110,7 @@ export class ListService<T> {
       this.filterFunction$
     ]).pipe(
       map(([list, filterFunction]) => {
+
         if (filterFunction) {
           return list.filter(filterFunction);
         } else {
@@ -168,11 +170,10 @@ export class ListService<T> {
    * observable and generate output (ListResult<T>) for the list$ consumers.
    */
   createList$() {
-    this.list$ = this.currentIndex$.pipe(
+    this.result$ = this.currentIndex$.pipe(
       skip(1),
       withLatestFrom(this.sortedList$),
       map(([requestedIndex, { list, sorting }]) => {
-
         /**
          * Check the amount of pages that is needed for the given list
          */
@@ -184,21 +185,22 @@ export class ListService<T> {
         const index = Math.max(0, Math.min(requestedIndex, totalPages - 1));
 
         /**
-         * Create a slice based on the index and the pageSize
+         * Create a page based on the index and the pageSize
          */
-        const slice = totalPages === 0 ? list : list.slice((index * this.config.pageSize), ((index * this.config.pageSize) + this.config.pageSize));
+        const sliceStart = index * this.config.pageSize;
+        const page = (totalPages === 0) ? list.slice() : list.slice(sliceStart, (sliceStart + this.config.pageSize));
 
         /**
          * Return the payload to the view, with the list, sorting and pagination options
          */
         return {
-          list: slice,
+          page,
           sorting,
           pagination: {
             listSize: list.length,
             page: {
               current: index + 1,
-              size: slice.length,
+              size: page.length,
               total: Math.max(totalPages, 1)
             },
             pages: Array.from({length: Math.max(totalPages, 1)}, (_, i) => i + 1),
