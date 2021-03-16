@@ -1,7 +1,8 @@
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { ListService } from './list.service';
-import { skip, take } from 'rxjs/operators';
-import { of, Subject } from 'rxjs';
+import { take } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { ListResult } from '../models/list.model';
 
 // Create a array with numbers from min to max
 const range = (min: number, max: number) => [...Array(max - min + 1).keys()].map(i => i + min);
@@ -23,32 +24,32 @@ describe('ListService', () => {
   });
 
   it('should create a data set without pageSize', fakeAsync(() => {
-    const data = range(1, 10);
+    const list = range(1, 10);
 
     /* PrevPage */
-    service.list$.pipe(take(1)).subscribe((r) => {
+    service.result$.pipe(take(1)).subscribe((r) => {
       expect(r.sorting).toEqual({ key: null, order: 'asc' });
-      expect(r.list.length).toEqual(data.length);
+      expect(r.page.length).toEqual(list.length);
       expect(r.pagination.listSize).toEqual(10);
       expect(r.pagination.page.current).toEqual(1);
       expect(r.pagination.page.total).toEqual(1);
-      expect(r.pagination.page.size).toEqual(data.length);
+      expect(r.pagination.page.size).toEqual(list.length);
       expect(r.pagination.pages.length).toEqual(1);
       expect(r.pagination.disabled.next).toEqual(true);
       expect(r.pagination.disabled.prev).toEqual(true);
     });
-    service.create({ data });
+
+    service.create({ list });
     tick();
   }));
 
   it('should create a data set with a observable', fakeAsync(() => {
     const spy = spyOn(service, 'update').and.callThrough();
-    const data$ = new Subject<number[]>();
+    const list$ = new Subject<number[]>();
 
-    /* PrevPage */
-    service.list$.pipe(take(1)).subscribe((r) => {
+    service.result$.pipe(take(1)).subscribe((r) => {
       expect(r.sorting).toEqual({ key: null, order: 'asc' });
-      expect(r.list.length).toEqual(10);
+      expect(r.page.length).toEqual(10);
       expect(r.pagination.listSize).toEqual(10);
       expect(r.pagination.page.current).toEqual(1);
       expect(r.pagination.page.total).toEqual(1);
@@ -58,14 +59,15 @@ describe('ListService', () => {
       expect(r.pagination.disabled.prev).toEqual(true);
     });
 
-    service.create({ data: data$.asObservable() });
+    service.create({ list: list$.asObservable() });
     tick();
 
-    data$.next(range(1, 10));
+    list$.next(range(1, 10));
+    tick();
 
-    service.list$.pipe(take(1)).subscribe((r) => {
+    service.result$.pipe(take(1)).subscribe((r) => {
       expect(r.sorting).toEqual({ key: null, order: 'asc' });
-      expect(r.list.length).toEqual(5);
+      expect(r.page.length).toEqual(5);
       expect(r.pagination.listSize).toEqual(5);
       expect(r.pagination.page.current).toEqual(1);
       expect(r.pagination.page.total).toEqual(1);
@@ -75,208 +77,196 @@ describe('ListService', () => {
       expect(r.pagination.disabled.prev).toEqual(true);
     });
 
-    data$.next(range(1, 5));
+    list$.next(range(1, 5));
 
     tick();
     expect(spy).toHaveBeenCalledTimes(2);
   }));
 
   it('should create a data set handle page updates', fakeAsync(() => {
-    const data = range(1, 10);
+    const list = range(1, 10);
     const pageSize = 2;
 
-    /* PrevPage */
-    service.list$.pipe(take(1)).subscribe((r) => {
-      expect(r.sorting).toEqual({ key: null, order: 'asc' });
-      expect(r.list.length).toEqual(pageSize);
-      expect(r.pagination.listSize).toEqual(10);
-      expect(r.pagination.page.current).toEqual(1);
-      expect(r.pagination.page.total).toEqual(5);
-      expect(r.pagination.page.size).toEqual(pageSize);
-      expect(r.pagination.pages.length).toEqual(5);
-      expect(r.pagination.disabled.next).toEqual(false);
-      expect(r.pagination.disabled.prev).toEqual(true);
-    });
-    service.create({ data, pageSize });
-    tick();
+    const results: ListResult<any>[] = [];
+    service.result$.subscribe(r => results.push(r));
 
-    /* NextPage */
-    service.list$.pipe(take(1)).subscribe((r) => {
-      expect(r.sorting).toEqual({ key: null, order: 'asc' });
-      expect(r.list).toEqual([3, 4]);
-      expect(r.pagination.page.current).toEqual(2);
-      expect(r.pagination.disabled.next).toEqual(false);
-      expect(r.pagination.disabled.prev).toEqual(false);
-    });
+    service.create({ list, pageSize });
     service.nextPage();
-    tick();
-
-    /* GoToPage */
-    service.list$.pipe(take(1)).subscribe((r) => {
-      expect(r.sorting).toEqual({ key: null, order: 'asc' });
-      expect(r.list).toEqual([9, 10]);
-      expect(r.pagination.page.current).toEqual(5);
-      expect(r.pagination.disabled.next).toEqual(true);
-      expect(r.pagination.disabled.prev).toEqual(false);
-    });
     service.goToPage(5);
-    tick();
+
+    expect(results.length).toEqual(3);
+    const [initialEmit, nextPageEmit, goToPageEmit] = results;
+
+    /* Initial chunk */
+    expect(initialEmit.sorting).toEqual({ key: null, order: 'asc' });
+    expect(initialEmit.page.length).toEqual(pageSize);
+    expect(initialEmit.pagination.listSize).toEqual(10);
+    expect(initialEmit.pagination.page.current).toEqual(1);
+    expect(initialEmit.pagination.page.total).toEqual(5);
+    expect(initialEmit.pagination.page.size).toEqual(pageSize);
+    expect(initialEmit.pagination.pages.length).toEqual(5);
+    expect(initialEmit.pagination.disabled.next).toEqual(false);
+    expect(initialEmit.pagination.disabled.prev).toEqual(true);
+
+    /* Next Page */
+    expect(nextPageEmit.sorting).toEqual({ key: null, order: 'asc' });
+    expect(nextPageEmit.page).toEqual([3, 4]);
+    expect(nextPageEmit.pagination.page.current).toEqual(2);
+    expect(nextPageEmit.pagination.disabled.next).toEqual(false);
+    expect(nextPageEmit.pagination.disabled.prev).toEqual(false);
+
+    /* Go to page */
+    expect(goToPageEmit.sorting).toEqual({ key: null, order: 'asc' });
+    expect(goToPageEmit.page).toEqual([9, 10]);
+    expect(goToPageEmit.pagination.page.current).toEqual(5);
+    expect(goToPageEmit.pagination.disabled.next).toEqual(true);
+    expect(goToPageEmit.pagination.disabled.prev).toEqual(false);
   }));
 
   it('should handle filter logic', fakeAsync(() => {
-    const data = range(1, 10);
+    const list = range(1, 10);
     const pageSize = 4;
 
-    service.create({
-      data,
-      pageSize,
-      filterFunction: (i) => (i > 5)
-    });
+    const results: ListResult<any>[] = [];
+    service.result$.subscribe(r => results.push(r));
 
-    /* Filter */
-    service.list$.pipe(take(1)).subscribe((r) => {
-      expect(r.sorting).toEqual({ key: null, order: 'asc' });
-      expect(r.list.length).toEqual(4);
-      expect(r.list).toEqual([6, 7, 8, 9]);
-      expect(r.pagination.page.current).toEqual(1);
-      expect(r.pagination.page.total).toEqual(2);
-      expect(r.pagination.page.size).toEqual(pageSize);
-      expect(r.pagination.pages.length).toEqual(2);
-      expect(r.pagination.disabled.next).toEqual(false);
-      expect(r.pagination.disabled.prev).toEqual(true);
-    });
+    service.create({ list,  pageSize, filterFunction: (i) => (i > 5)});
     service.filter();
-    tick();
+    service.nextPage();
+
+    expect(results.length).toEqual(3);
+    const [initialEmit, filteredEmit, nextPageEmit] = results;
+
+    /* Filtered Emit */
+    expect(filteredEmit.sorting).toEqual({ key: null, order: 'asc' });
+    expect(filteredEmit.page.length).toEqual(4);
+    expect(filteredEmit.page).toEqual([6, 7, 8, 9]);
+    expect(filteredEmit.pagination.page.current).toEqual(1);
+    expect(filteredEmit.pagination.page.total).toEqual(2);
+    expect(filteredEmit.pagination.page.size).toEqual(pageSize);
+    expect(filteredEmit.pagination.pages.length).toEqual(2);
+    expect(filteredEmit.pagination.disabled.next).toEqual(false);
+    expect(filteredEmit.pagination.disabled.prev).toEqual(true);
 
     /* Next page on filter */
-    service.list$.pipe(take(1)).subscribe((r) => {
-      expect(r.sorting).toEqual({ key: null, order: 'asc' });
-      expect(r.list.length).toEqual(1);
-      expect(r.list).toEqual([10]);
-      expect(r.pagination.listSize).toEqual(5);
-      expect(r.pagination.page.current).toEqual(2);
-      expect(r.pagination.page.total).toEqual(2);
-      expect(r.pagination.page.size).toEqual(1);
-      expect(r.pagination.pages.length).toEqual(2);
-      expect(r.pagination.disabled.next).toEqual(true);
-      expect(r.pagination.disabled.prev).toEqual(false);
+    expect(nextPageEmit.sorting).toEqual({ key: null, order: 'asc' });
+    expect(nextPageEmit.page.length).toEqual(1);
+    expect(nextPageEmit.page).toEqual([10]);
+    expect(nextPageEmit.pagination.listSize).toEqual(5);
+    expect(nextPageEmit.pagination.page.current).toEqual(2);
+    expect(nextPageEmit.pagination.page.total).toEqual(2);
+    expect(nextPageEmit.pagination.page.size).toEqual(1);
+    expect(nextPageEmit.pagination.pages.length).toEqual(2);
+    expect(nextPageEmit.pagination.disabled.next).toEqual(true);
+    expect(nextPageEmit.pagination.disabled.prev).toEqual(false);
+  }));
+
+  it('should handle sort on init', fakeAsync(() => {
+    const list = [3, 1, 0, 2].map((i) => ({ id: i }));
+
+    const results: ListResult<any>[] = [];
+    service.result$.subscribe(r => results.push(r));
+
+    service.create({
+      list,
+      pageSize: 2,
+      sort: { key: 'id', order: 'desc' }
     });
     service.nextPage();
-    tick();
+    service.sort('id');
+
+    expect(results.length).toEqual(3);
+    const [initialEmit, nextPageEmit, sortEmit] = results;
+
+    expect(initialEmit.sorting).toEqual({ key: 'id', order: 'desc' });
+    expect(initialEmit.page.length).toEqual(2);
+    expect(initialEmit.page).toEqual([3, 2].map(i => ({ id: i })));
+    expect(initialEmit.pagination.page.current).toEqual(1);
+    expect(initialEmit.pagination.page.total).toEqual(2);
+    expect(initialEmit.pagination.page.size).toEqual(2);
+    expect(initialEmit.pagination.pages.length).toEqual(2);
+    expect(initialEmit.pagination.disabled.next).toEqual(false);
+    expect(initialEmit.pagination.disabled.prev).toEqual(true);
+
+    expect(nextPageEmit.sorting).toEqual({ key: 'id', order: 'desc' });
+    expect(nextPageEmit.page.length).toEqual(2);
+    expect(nextPageEmit.page).toEqual([1, 0].map(i => ({ id: i })));
+    expect(nextPageEmit.pagination.page.current).toEqual(2);
+    expect(nextPageEmit.pagination.page.total).toEqual(2);
+    expect(nextPageEmit.pagination.page.size).toEqual(2);
+    expect(nextPageEmit.pagination.pages.length).toEqual(2);
+    expect(nextPageEmit.pagination.disabled.next).toEqual(true);
+    expect(nextPageEmit.pagination.disabled.prev).toEqual(false);
+
+    expect(sortEmit.sorting).toEqual({ key: 'id', order: 'asc' });
+    expect(sortEmit.page.length).toEqual(2);
+    expect(sortEmit.page).toEqual([0, 1].map(i => ({ id: i })));
+    expect(sortEmit.pagination.page.current).toEqual(1);
+    expect(sortEmit.pagination.page.total).toEqual(2);
+    expect(sortEmit.pagination.page.size).toEqual(2);
+    expect(sortEmit.pagination.pages.length).toEqual(2);
+    expect(sortEmit.pagination.disabled.next).toEqual(false);
+    expect(sortEmit.pagination.disabled.prev).toEqual(true);
   }));
 
   it('should have a sort function in objects', fakeAsync(() => {
-    const data = [
-      {
-        id: 3
-      },
-      {
-        id: 1
-      },
-      {
-        id: 0
-      },
-      {
-        id: 2
-      }
-    ];
+    const list = [3, 1, 0, 2].map((i) => ({ id: i }));
 
-    /* PrevPage */
-    service.list$.pipe(skip(1), take(1)).subscribe((r) => {
-      expect(r.sorting).toEqual({ key: 'id', order: 'asc' });
-      expect(r.list.length).toEqual(data.length);
-      expect(r.pagination.listSize).toEqual(4);
-      expect(r.list).toEqual([
-        {
-          id: 0
-        },
-        {
-          id: 1
-        },
-        {
-          id: 2
-        },
-        {
-          id: 3
-        }
-      ]);
-    });
+    const results: ListResult<any>[] = [];
+    service.result$.subscribe(r => results.push(r));
+
     service.create({
-      data
+      list
     });
-
+    service.sort('id');
     service.sort('id');
 
-    tick();
+    expect(results.length).toEqual(3);
 
-    service.list$.pipe(take(1)).subscribe((r) => {
-      expect(r.sorting).toEqual({ key: 'id', order: 'desc' });
-      expect(r.list.length).toEqual(data.length);
-      expect(r.pagination.listSize).toEqual(4);
-      expect(r.list).toEqual([
-        {
-          id: 3
-        },
-        {
-          id: 2
-        },
-        {
-          id: 1
-        },
-        {
-          id: 0
-        }
-      ]);
-    });
+    const [initialEmit, sortEmit, reverseSortEmit] = results;
 
-    service.sort('id');
+    expect(sortEmit.sorting).toEqual({ key: 'id', order: 'asc' });
+    expect(reverseSortEmit.pagination.page.current).toEqual(1);
+    expect(sortEmit.page.length).toEqual(list.length);
+    expect(sortEmit.pagination.listSize).toEqual(4);
+    expect(sortEmit.page).toEqual(range(0, 3).map(i => ({ id: i })));
 
-    tick();
+    expect(reverseSortEmit.sorting).toEqual({ key: 'id', order: 'desc' });
+    expect(reverseSortEmit.pagination.page.current).toEqual(1);
+    expect(reverseSortEmit.page.length).toEqual(list.length);
+    expect(reverseSortEmit.pagination.listSize).toEqual(4);
+    expect(reverseSortEmit.page).toEqual([3, 2, 1, 0].map(i => ({ id: i })));
   }));
 
   it('should have a sort function in objects with string values', fakeAsync(() => {
-    const data = [
-      {
-        name: 'a'
-      },
-      {
-        name: 'd'
-      },
-      {
-        name: 'c'
-      },
-      {
-        name: 'b'
-      }
-    ];
+    const list = ['a', 'b', 'c', 'd'].map(i => ({ name: i }));
 
-    /* PrevPage */
-    service.list$.pipe(skip(1), take(1)).subscribe((r) => {
-      expect(r.sorting).toEqual({ key: 'name', order: 'asc' });
-      expect(r.list.length).toEqual(data.length);
-      expect(r.pagination.listSize).toEqual(4);
-      expect(r.list).toEqual([
-        {
-          name: 'a'
-        },
-        {
-          name: 'b'
-        },
-        {
-          name: 'c'
-        },
-        {
-          name: 'd'
-        }
-      ]);
-    });
+    const results: ListResult<any>[] = [];
+    service.result$.subscribe(r => results.push(r));
+
     service.create({
-      data
+      list
     });
-
+    service.sort('name');
     service.sort('name');
 
-    tick();
-  }));
+    expect(results.length).toEqual(3);
 
+    const [initialEmit, sortEmit, reverseSortEmit] = results;
+
+    expect(initialEmit.sorting).toEqual({ key: null, order: 'asc' });
+    expect(initialEmit.page.length).toEqual(list.length);
+    expect(initialEmit.pagination.listSize).toEqual(4);
+    expect(initialEmit.page).toEqual(['a', 'b', 'c', 'd'].map(i => ({ name: i })));
+
+    expect(sortEmit.sorting).toEqual({ key: 'name', order: 'asc' });
+    expect(sortEmit.page.length).toEqual(list.length);
+    expect(sortEmit.pagination.listSize).toEqual(4);
+    expect(sortEmit.page).toEqual(['a', 'b', 'c', 'd'].map(i => ({ name: i })));
+
+    expect(reverseSortEmit.sorting).toEqual({ key: 'name', order: 'desc' });
+    expect(reverseSortEmit.page.length).toEqual(list.length);
+    expect(reverseSortEmit.pagination.listSize).toEqual(4);
+    expect(reverseSortEmit.page).toEqual(['d', 'c', 'b', 'a'].map(i => ({ name: i })));
+  }));
 });
