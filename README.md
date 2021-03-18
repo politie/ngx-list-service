@@ -1,3 +1,5 @@
+[![CI](https://github.com/politie/ngx-list-service/actions/workflows/main.yml/badge.svg)](https://github.com/politie/ngx-list-service/actions/workflows/main.yml)
+
 # ngxListService
 
 This repository is used to create the ngxListService library. For the readme, check [the readme in the /projects/ngx-list-service](/projects/ngx-list-service/README.md) folder.
