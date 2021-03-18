@@ -10,7 +10,7 @@ Angular Library for working with lists. Includes filtering, sorting, updates and
 
 To use the ListService, provide it to your `@Component` decorator by adding the service into the providers array. This makes sure that a unique ListService instance is created for each component where you use the service.
 
-Create a property called `list$`, which is of type `Observable<ListResult<T>>` and assign it in the constructor to the ListService `list$` observable.
+Create a property called `result$`, which is of type `Observable<ListResult<T>>` and assign it in the constructor to the ListService `result$` observable.
 
 ```typescript
 import { ListService, ListResult } from '@politie/ngx-list-service';
@@ -24,10 +24,10 @@ import { Observable } from 'rxjs';
   ]
 })
 export class MyComponent implements OnInit {
-  public listResult$: Observable<ListResult<MyType>>;
+  public result$: Observable<ListResult<MyType>>;
 
   constructor(private listService: ListService<MyType>) {
-    this.listResult$ = this.listService.result$;
+    this.result$ = this.listService.result$;
   }
   
   ngOnInit() {
