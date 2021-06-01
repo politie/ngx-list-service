@@ -1,11 +1,11 @@
 {
   "name": "@politie/ngx-list-service",
   "license": "Apache-2.0",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "peerDependencies": {
-    "@angular/common": "^11.0.9",
-    "@angular/core": "^11.0.9",
-    "rxjs": "~6.6.0"
+    "@angular/common": ">11.0.0",
+    "@angular/core": ">11.0.0",
+    "rxjs": "^6.5.0"
   },
   "dependencies": {
     "tslib": "^2.0.0"

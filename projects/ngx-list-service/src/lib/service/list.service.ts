@@ -1,4 +1,4 @@
-import { BehaviorSubject, combineLatest, isObservable, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, combineLatest, isObservable, Observable, ReplaySubject, Subject } from 'rxjs';
 import { filter, map, skip, withLatestFrom } from 'rxjs/operators';
 import { Injectable } from '@angular/core';
 import { ListPayload, ListResult, ListSorting } from '../models/list.model';
@@ -10,6 +10,7 @@ export class ListService<T> {
   private filterFunction$: BehaviorSubject<((item: T) => boolean) | null> = new BehaviorSubject<((item: T) => boolean) | null>(null);
   private sortOptions$: BehaviorSubject<ListSorting<T> | null> = new BehaviorSubject<ListSorting<T> | null>(null);
   private currentIndex$ = new BehaviorSubject<number>(0);
+  private resultSubject$: ReplaySubject<ListResult<T>> = new ReplaySubject<ListResult<T>>(1);
 
   private originalList$: Subject<T[]> = new Subject<T[]>();
   private filteredList$!: Observable<T[]>;
@@ -31,6 +32,8 @@ export class ListService<T> {
     this.createFilteredList$();
     this.createSortedList$();
     this.createList$();
+
+    this.result$ = this.resultSubject$.asObservable();
   }
 
   /**
@@ -170,7 +173,7 @@ export class ListService<T> {
    * observable and generate output (ListResult<T>) for the list$ consumers.
    */
   createList$() {
-    this.result$ = this.currentIndex$.pipe(
+    this.currentIndex$.pipe(
       skip(1),
       withLatestFrom(this.sortedList$),
       map(([requestedIndex, { list, sorting }]) => {
@@ -211,7 +214,7 @@ export class ListService<T> {
           }
         };
       })
-    );
+    ).subscribe(this.resultSubject$);
   }
 
   /**
