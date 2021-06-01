@@ -1,10 +1,10 @@
 import { BehaviorSubject, combineLatest, isObservable, Observable, ReplaySubject, Subject } from 'rxjs';
-import { filter, map, skip, withLatestFrom } from 'rxjs/operators';
-import { Injectable } from '@angular/core';
+import { filter, map, skip, takeUntil, withLatestFrom } from 'rxjs/operators';
+import { Injectable, OnDestroy } from '@angular/core';
 import { ListPayload, ListResult, ListSorting } from '../models/list.model';
 
 @Injectable()
-export class ListService<T> {
+export class ListService<T> implements OnDestroy {
   result$!: Observable<ListResult<T>>;
 
   private filterFunction$: BehaviorSubject<((item: T) => boolean) | null> = new BehaviorSubject<((item: T) => boolean) | null>(null);
@@ -15,6 +15,7 @@ export class ListService<T> {
   private originalList$: Subject<T[]> = new Subject<T[]>();
   private filteredList$!: Observable<T[]>;
   private sortedList$!: Observable<{ list: T[], sorting: ListSorting<T>}>;
+  private destroy$ = new Subject<boolean>();
 
   private config: Required<ListPayload<any>> = {
     sort: { key: null, order: 'asc' },
@@ -34,6 +35,10 @@ export class ListService<T> {
     this.createList$();
 
     this.result$ = this.resultSubject$.asObservable();
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next(true);
   }
 
   /**
@@ -56,7 +61,9 @@ export class ListService<T> {
     }
 
     if (isObservable(this.config.list)) {
-      this.config.list.subscribe(r => this.update(r));
+      this.config.list.pipe(
+        takeUntil(this.destroy$)
+      ).subscribe(r => this.update(r));
     } else {
       this.update(this.config.list);
     }
@@ -214,6 +221,8 @@ export class ListService<T> {
           }
         };
       })
+    ).pipe(
+      takeUntil(this.destroy$)
     ).subscribe(this.resultSubject$);
   }
 

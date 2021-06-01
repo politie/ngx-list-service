@@ -134,7 +134,7 @@ describe('ListService', () => {
     expect(initialEmit.sorting).toEqual({ key: null, order: 'asc' });
     expect(initialEmit.page.length).toEqual(pageSize);
     expect(initialEmit.pagination.listSize).toEqual(10);
-    expect(initialEmit.pagination.page.current).toEqual(5);
+    expect(initialEmit.pagination.page.current).toEqual(1);
     expect(initialEmit.pagination.page.total).toEqual(5);
     expect(initialEmit.pagination.page.size).toEqual(pageSize);
     expect(initialEmit.pagination.pages.length).toEqual(5);
@@ -175,7 +175,7 @@ describe('ListService', () => {
     expect(filteredEmit.page.length).toEqual(4);
     expect(filteredEmit.page).toEqual([6, 7, 8, 9]);
     expect(filteredEmit.pagination.page.current).toEqual(1);
-    expect(filteredEmit.pagination.page.total).toEqual(5);
+    expect(filteredEmit.pagination.page.total).toEqual(2);
     expect(filteredEmit.pagination.page.size).toEqual(pageSize);
     expect(filteredEmit.pagination.pages.length).toEqual(2);
     expect(filteredEmit.pagination.disabled.next).toEqual(false);
@@ -187,7 +187,7 @@ describe('ListService', () => {
     expect(nextPageEmit.page).toEqual([10]);
     expect(nextPageEmit.pagination.listSize).toEqual(5);
     expect(nextPageEmit.pagination.page.current).toEqual(2);
-    expect(nextPageEmit.pagination.page.total).toEqual(5);
+    expect(nextPageEmit.pagination.page.total).toEqual(2);
     expect(nextPageEmit.pagination.page.size).toEqual(1);
     expect(nextPageEmit.pagination.pages.length).toEqual(2);
     expect(nextPageEmit.pagination.disabled.next).toEqual(true);
@@ -215,7 +215,7 @@ describe('ListService', () => {
     expect(initialEmit.page.length).toEqual(2);
     expect(initialEmit.page).toEqual([3, 2].map(i => ({ id: i })));
     expect(initialEmit.pagination.page.current).toEqual(1);
-    expect(initialEmit.pagination.page.total).toEqual(5);
+    expect(initialEmit.pagination.page.total).toEqual(2);
     expect(initialEmit.pagination.page.size).toEqual(2);
     expect(initialEmit.pagination.pages.length).toEqual(2);
     expect(initialEmit.pagination.disabled.next).toEqual(false);
@@ -225,7 +225,7 @@ describe('ListService', () => {
     expect(nextPageEmit.page.length).toEqual(2);
     expect(nextPageEmit.page).toEqual([1, 0].map(i => ({ id: i })));
     expect(nextPageEmit.pagination.page.current).toEqual(2);
-    expect(nextPageEmit.pagination.page.total).toEqual(5);
+    expect(nextPageEmit.pagination.page.total).toEqual(2);
     expect(nextPageEmit.pagination.page.size).toEqual(2);
     expect(nextPageEmit.pagination.pages.length).toEqual(2);
     expect(nextPageEmit.pagination.disabled.next).toEqual(true);
@@ -235,7 +235,7 @@ describe('ListService', () => {
     expect(sortEmit.page.length).toEqual(2);
     expect(sortEmit.page).toEqual([0, 1].map(i => ({ id: i })));
     expect(sortEmit.pagination.page.current).toEqual(1);
-    expect(sortEmit.pagination.page.total).toEqual(5);
+    expect(sortEmit.pagination.page.total).toEqual(2);
     expect(sortEmit.pagination.page.size).toEqual(2);
     expect(sortEmit.pagination.pages.length).toEqual(2);
     expect(sortEmit.pagination.disabled.next).toEqual(false);
@@ -261,7 +261,7 @@ describe('ListService', () => {
     expect(sortEmit.sorting).toEqual({ key: 'id', order: 'asc' });
     expect(reverseSortEmit.pagination.page.current).toEqual(1);
     expect(sortEmit.page.length).toEqual(list.length);
-    expect(sortEmit.pagination.listSize).toEqual(5);
+    expect(sortEmit.pagination.listSize).toEqual(4);
     expect(sortEmit.page).toEqual(range(0, 3).map(i => ({ id: i })));
 
     expect(reverseSortEmit.sorting).toEqual({ key: 'id', order: 'desc' });
@@ -289,7 +289,7 @@ describe('ListService', () => {
 
     expect(initialEmit.sorting).toEqual({ key: null, order: 'asc' });
     expect(initialEmit.page.length).toEqual(list.length);
-    expect(initialEmit.pagination.listSize).toEqual(5);
+    expect(initialEmit.pagination.listSize).toEqual(4);
     expect(initialEmit.page).toEqual(['a', 'b', 'c', 'd'].map(i => ({ name: i })));
 
     expect(sortEmit.sorting).toEqual({ key: 'name', order: 'asc' });
@@ -301,5 +301,30 @@ describe('ListService', () => {
     expect(reverseSortEmit.page.length).toEqual(list.length);
     expect(reverseSortEmit.pagination.listSize).toEqual(4);
     expect(reverseSortEmit.page).toEqual(['d', 'c', 'b', 'a'].map(i => ({ name: i })));
+  }));
+
+  it('should stop subscriptions on destroy', fakeAsync(() => {
+    const spy = spyOn(service, 'update').and.callThrough();
+
+    const list$ = new Subject<number[]>();
+    const results: ListResult<any>[] = [];
+
+    service.result$.subscribe(r => results.push(r));
+
+    service.create({ list: list$.asObservable() });
+    tick();
+    expect(results.length).toEqual(0);
+
+    list$.next(range(1, 10));
+    tick();
+    expect(results.length).toEqual(1);
+
+    service.ngOnDestroy();
+    tick();
+
+    list$.next(range(1, 5));
+    tick();
+
+    expect(spy).toHaveBeenCalledTimes(1);
   }));
 });
