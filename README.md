@@ -52,8 +52,8 @@ The create method takes your list configuration and data and returns the sorted 
 ##### Properties for the payload object
 | Property | Type | Description | Default |
 | --- | :--- | --- | --- |
-| list | `T[]` or `Observable<T[]>` | Array (or observable with array) of objects containing the data that should be displayed. | `[]` |
-| pageSize | `number` | How many items should be returned per page? Set to `0` for no pages. | `0` |
+| list* | `T[]` or `Observable<T[]>` | Array (or observable with array) of objects containing the data that should be displayed. | `[]` |
+| pageSize? | `number` | How many items should be returned per page? Set to `0` for no pages. | `0` |
 | sort | `{key: property: Extract<keyof T, string>, order: 'asc' / 'desc' `} | If you want to sort the list on initialzation, set the sort property to the key you want to sort the list to. | `{ key: null, order: 'asc' }` |
 | filterFunction | `(item: T) => boolean` | Define a custom filter function. See [Filtering the List](#filtering-the-list) for a example. | `null` |
 | sortFunction | `(item: T, property: Extract<keyof T, string>) => any)` | If you want to override the default sorting behaviour, you can do so by adding your own sortFunction. See [Sorting the List](#sorting-the-list) for a example. | `null` |
@@ -87,6 +87,12 @@ If pagination is active, grab the previous `page` of data and emit the result to
 If pagination is active, go to the provided page and emit the new result to the `result$` observable.
 
 > There will be a check in place for checking if the page to go to is within the bounds of the list.
+
+### `setPageSize(size: number)`
+
+Sets the page size of the list to a new size.
+
+> If pagination is active and `setPageSize()` is called with a number higher than 0, the pagination will be reset to the first page of results.
 
 ## Properties
 

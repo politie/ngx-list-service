@@ -4,8 +4,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build --prod",
-    "build:lib": "ng build ngx-list-service --prod",
+    "build": "ng build --configuration production",
+    "build:lib": "ng build ngx-list-service --configuration production",
     "test:lib": "jest --config ./jest.lib.config.js",
     "postbuild": "cp README.md dist/ngx-list-service",
     "eslint": "eslint --ext .ts projects/",

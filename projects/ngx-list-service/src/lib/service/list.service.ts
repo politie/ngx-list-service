@@ -119,8 +119,7 @@ export class ListService<T> implements OnDestroy {
       this.originalList$,
       this.filterFunction$
     ]).pipe(
-      map(([list, filterFunction]) => {
-
+      map(([ list, filterFunction ]) => {
         if (filterFunction) {
           return list.filter(filterFunction);
         } else {
@@ -137,9 +136,9 @@ export class ListService<T> implements OnDestroy {
   createSortedList$() {
     this.sortedList$ = combineLatest([
       this.filteredList$,
-      this.sortOptions$.pipe(filter((i) => i !== null)) as Observable<ListSorting<T>>
+      this.sortOptions$.pipe(filter((options) => options !== null)) as Observable<ListSorting<T>>
     ]).pipe(
-      map(([filteredList, sorting]) => {
+      map(([ filteredList, sorting ]) => {
         let list: T[];
 
         if (sorting.key) {
@@ -156,9 +155,19 @@ export class ListService<T> implements OnDestroy {
             }
 
             if (sorting.order === 'asc') {
+              if (typeof resultA === 'string' && typeof resultB === 'string') {
+                return resultA.localeCompare(resultB, undefined, { sensitivity: 'base' });
+              }
+
               return resultA < resultB ? -1 : resultA > resultB ? 1 : 0;
+
             } else if (sorting.order === 'desc') {
+              if (typeof resultA === 'string' && typeof resultB === 'string') {
+                return resultB.localeCompare(resultA, undefined, { sensitivity: 'base' });
+              }
+
               return resultB < resultA ? -1 : resultB > resultA ? 1 : 0;
+
             } else {
               return 0;
             }
@@ -183,7 +192,7 @@ export class ListService<T> implements OnDestroy {
     this.currentIndex$.pipe(
       skip(1),
       withLatestFrom(this.sortedList$),
-      map(([requestedIndex, { list, sorting }]) => {
+      map(([ requestedIndex, { list, sorting } ]) => {
         /**
          * Check the amount of pages that is needed for the given list
          */
@@ -248,5 +257,17 @@ export class ListService<T> implements OnDestroy {
    */
   prevPage() {
     this.currentIndex$.next(this.currentIndex$.getValue() - 1);
+  }
+
+  /**
+   * Set the size of a page to 'size'
+   *
+   * @param size the new size of each page
+   */
+  setPageSize(size: number) {
+    if (typeof size === 'number' && size > -1) {
+      this.config.pageSize = size;
+      this.currentIndex$.next(0);
+    }
   }
 }

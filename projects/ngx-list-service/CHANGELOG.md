@@ -1,3 +1,11 @@
+# 1.1.3
+
+- Added `setPageSize(size: number)` method to update the page size of the list.
+
+# 1.1.2
+
+- Fixed issue with string sorting to ignore casing.
+
 # 1.1.1
 
 - HOTFIX: Remove subscriptions on destroy
